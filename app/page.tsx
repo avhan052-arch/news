@@ -840,7 +840,7 @@ const AdminDashboard = (props: {
                                         type="text"
                                         value={localAdConfig.slots[slotName]?.key || ''}
                                         onChange={(e) => handleSlotConfigChange(slotName, 'key', e.target.value)}
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        className="mt-1 block w-full px-3 py-2 text-black border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                     />
                                 </div>
                                 <div className="flex gap-4">
@@ -850,7 +850,7 @@ const AdminDashboard = (props: {
                                             type="number"
                                             value={localAdConfig.slots[slotName]?.width || 0}
                                             onChange={(e) => handleSlotConfigChange(slotName, 'width', e.target.value)}
-                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            className="mt-1 block w-full px-3 py-2 text-black border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         />
                                     </div>
                                     <div className="flex-1">
@@ -859,7 +859,7 @@ const AdminDashboard = (props: {
                                             type="number"
                                             value={localAdConfig.slots[slotName]?.height || 0}
                                             onChange={(e) => handleSlotConfigChange(slotName, 'height', e.target.value)}
-                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            className="mt-1 block w-full px-3 py-2 text-black border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         />
                                     </div>
                                 </div>
@@ -884,7 +884,7 @@ const AdminDashboard = (props: {
                                         type="text"
                                         value={localAdConfig.pageScripts[scriptName]?.src || ''}
                                         onChange={(e) => handlePageScriptChange(scriptName, 'src', e.target.value)}
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        className="mt-1 block w-full px-3 py-2 text-black border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                     />
                                 </div>
                                 <div className="flex items-center">
@@ -892,7 +892,7 @@ const AdminDashboard = (props: {
                                         type="checkbox"
                                         checked={localAdConfig.pageScripts[scriptName]?.enabled || false}
                                         onChange={(e) => handlePageScriptChange(scriptName, 'enabled', e.target.checked)}
-                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded text-black"
                                     />
                                     <label className="ml-2 block text-sm text-gray-900">
                                         Enabled
