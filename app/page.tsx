@@ -3,11 +3,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import Script from 'next/script';
 import { Share2, TrendingUp, Zap, Clock, Heart, MessageCircle, Bookmark, Home, Settings, FileText, BarChart3, Plus, Edit2, Trash2, Eye, Lock, LogOut, Search } from 'lucide-react';
 
-// Type definitions
+// --- TYPE DEFINITIONS ---
+
 interface AdConfig {
     key: string;
     width: number;
     height: number;
+}
+
+interface PageScriptConfig {
+    src: string;
+    enabled: boolean;
+}
+
+interface AdConfigState {
+    slots: { [key: string]: AdConfig };
+    pageScripts: { [key: string]: PageScriptConfig };
 }
 
 interface Article {
@@ -37,11 +48,6 @@ interface FormData {
   articleSidebarKey?: string;
 }
 
-interface AdConfigState {
-    [key: string]: AdConfig;
-}
-
-
 interface AdSlotProps {
   format: string;
   width?: string;
@@ -49,7 +55,7 @@ interface AdSlotProps {
   className?: string;
 }
 
-// --- Re-usable Components ---
+// --- RE-USABLE COMPONENTS ---
 
 const AdSlot = ({ format, width, height, className = "" }: AdSlotProps) => (
   <div 
@@ -73,7 +79,6 @@ const AdsterraBanner = ({ adKey, width, height }: { adKey: string, width: number
     const container = containerRef.current;
     if (!container || !adKey) return;
 
-    // Clear previous ads to re-mount
     if (container.children.length > 0) {
         container.innerHTML = '';
     }
@@ -109,7 +114,7 @@ const AdsterraBanner = ({ adKey, width, height }: { adKey: string, width: number
 };
 
 
-// --- Frontend Components ---
+// --- FRONTEND COMPONENTS ---
 
 const HomePage = (props: { 
     articles: Article[], 
@@ -118,7 +123,7 @@ const HomePage = (props: {
     selectedCategory: string | null, 
     setSelectedCategory: (category: string | null) => void, 
     searchQuery: string,
-    adConfig: AdConfigState
+    adConfig: { [key: string]: AdConfig }
 }) => {
   const { articles, setSelectedArticle, incrementViews, selectedCategory, setSelectedCategory, searchQuery, adConfig } = props;
 
@@ -238,7 +243,7 @@ const ArticleDetail = (props: {
   articles: Article[], 
   incrementViews: (id: number) => void, 
   setSelectedCategory: (category: string | null) => void,
-  adConfig: AdConfigState
+  adConfig: { [key: string]: AdConfig }
 }) => {
   const { article, setSelectedArticle, articles, incrementViews, setSelectedCategory, adConfig } = props;
   
@@ -369,11 +374,16 @@ const FrontendView = (props: {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Script 
-        id="adsterra-pop-under"
-        strategy="afterInteractive"
-        src="//pl28124730.effectivegatecpm.com/12/78/0f/12780f97b1caf3c203b75c7452ef61ab.js" 
-      />
+      {Object.values(adConfig.pageScripts).map(script => (
+          script.enabled && script.src && (
+              <Script 
+                  key={script.src}
+                  id={`page-script-${script.src}`}
+                  strategy="afterInteractive"
+                  src={script.src}
+              />
+          )
+      ))}
       <div className="sticky top-0 z-50 bg-white shadow-sm">
         <div className="max-w-7xl mx-auto">
           <AdSlot format="Social Bar (Sticky)" width="100%" height="60px" />
@@ -424,9 +434,9 @@ const FrontendView = (props: {
             <p className="text-gray-500">Loading...</p>
           </div>
         ) : selectedArticle ? (
-          <ArticleDetail article={selectedArticle} setSelectedArticle={setSelectedArticle} articles={articles} incrementViews={incrementViews} setSelectedCategory={setSelectedCategory} adConfig={adConfig} />
+          <ArticleDetail article={selectedArticle} setSelectedArticle={setSelectedArticle} articles={articles} incrementViews={incrementViews} setSelectedCategory={setSelectedCategory} adConfig={adConfig.slots} />
         ) : (
-          <HomePage articles={articles} setSelectedArticle={setSelectedArticle} incrementViews={incrementViews} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} searchQuery={searchQuery} adConfig={adConfig} />
+          <HomePage articles={articles} setSelectedArticle={setSelectedArticle} incrementViews={incrementViews} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} searchQuery={searchQuery} adConfig={adConfig.slots} />
         )}
       </main>
 
@@ -442,7 +452,7 @@ const FrontendView = (props: {
 };
 
 
-// --- Admin Components ---
+// --- ADMIN COMPONENTS ---
 
 const AdminLogin = ({ password, setPassword, handleLogin, setIsAdmin }: { password: string, setPassword: (val: string) => void, handleLogin: () => void, setIsAdmin: (val: boolean | null) => void }) => (
   <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center p-4">
@@ -527,16 +537,32 @@ const AdminDashboard = (props: {
     setLocalAdConfig(adConfig);
   }, [adConfig]);
 
-  const handleAdConfigChange = (slot: string, field: keyof AdConfig, value: string | number) => {
+  const handleSlotConfigChange = (slot: string, field: keyof AdConfig, value: string | number) => {
     const isNumeric = field === 'width' || field === 'height';
     setLocalAdConfig(prev => ({
         ...prev,
-        [slot]: {
-            ...prev[slot],
-            [field]: isNumeric ? Number(value) : value
+        slots: {
+            ...prev.slots,
+            [slot]: {
+                ...prev.slots[slot],
+                [field]: isNumeric ? Number(value) : value
+            }
         }
     }));
   };
+
+  const handlePageScriptChange = (slot: string, field: keyof PageScriptConfig, value: string | boolean) => {
+     setLocalAdConfig(prev => ({
+        ...prev,
+        pageScripts: {
+            ...prev.pageScripts,
+            [slot]: {
+                ...prev.pageScripts[slot],
+                [field]: value
+            }
+        }
+    }));
+  }
 
   const handleSaveAdConfig = () => {
     saveAdConfig(localAdConfig);
@@ -732,7 +758,7 @@ const AdminDashboard = (props: {
                       onClick={() => {
                         setShowArticleForm(false);
                         setEditingArticle(null);
-                        setFormData({ title: '', category: '', image: '', excerpt: '', content: '', readTime: '5 min', articleRectangleKey: '', articleSidebarKey: '' });
+                        setFormData({ title: '', category: '', image: '', excerpt: '', content: '', readTime: '5 min' });
                       }}
                       className="px-6 py-2 bg-gray-300 text-black rounded-lg hover:bg-gray-400 transition-colors"
                     >
@@ -800,9 +826,9 @@ const AdminDashboard = (props: {
               </div>
 
               <div className="p-4 bg-green-50 rounded-lg">
-                <h3 className="font-semibold text-gray-800 mb-4">Pengaturan Iklan Global</h3>
+                <h3 className="font-semibold text-gray-800 mb-4">Pengaturan Slot Iklan</h3>
                 <div className="space-y-4">
-                    {Object.keys(localAdConfig).map(slotName => (
+                    {Object.keys(localAdConfig.slots).map(slotName => (
                         <div key={slotName} className="p-3 bg-white rounded-md shadow-sm">
                             <label className="block text-sm font-medium text-gray-700 capitalize">
                                 {slotName.replace(/([A-Z])/g, ' $1')}
@@ -812,8 +838,8 @@ const AdminDashboard = (props: {
                                     <label className="text-xs text-gray-600">Ad Key</label>
                                     <input
                                         type="text"
-                                        value={localAdConfig[slotName]?.key || ''}
-                                        onChange={(e) => handleAdConfigChange(slotName, 'key', e.target.value)}
+                                        value={localAdConfig.slots[slotName]?.key || ''}
+                                        onChange={(e) => handleSlotConfigChange(slotName, 'key', e.target.value)}
                                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                     />
                                 </div>
@@ -822,8 +848,8 @@ const AdminDashboard = (props: {
                                         <label className="text-xs text-gray-600">Width (px)</label>
                                         <input
                                             type="number"
-                                            value={localAdConfig[slotName]?.width || 0}
-                                            onChange={(e) => handleAdConfigChange(slotName, 'width', e.target.value)}
+                                            value={localAdConfig.slots[slotName]?.width || 0}
+                                            onChange={(e) => handleSlotConfigChange(slotName, 'width', e.target.value)}
                                             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         />
                                     </div>
@@ -831,8 +857,8 @@ const AdminDashboard = (props: {
                                         <label className="text-xs text-gray-600">Height (px)</label>
                                         <input
                                             type="number"
-                                            value={localAdConfig[slotName]?.height || 0}
-                                            onChange={(e) => handleAdConfigChange(slotName, 'height', e.target.value)}
+                                            value={localAdConfig.slots[slotName]?.height || 0}
+                                            onChange={(e) => handleSlotConfigChange(slotName, 'height', e.target.value)}
                                             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         />
                                     </div>
@@ -840,14 +866,50 @@ const AdminDashboard = (props: {
                             </div>
                         </div>
                     ))}
-                    <button
-                      onClick={handleSaveAdConfig}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      Simpan Pengaturan Iklan
-                    </button>
                 </div>
               </div>
+
+              <div className="p-4 bg-purple-50 rounded-lg">
+                <h3 className="font-semibold text-gray-800 mb-4">Pengaturan Skrip Halaman</h3>
+                 <div className="space-y-4">
+                    {Object.keys(localAdConfig.pageScripts).map(scriptName => (
+                        <div key={scriptName} className="p-3 bg-white rounded-md shadow-sm">
+                             <label className="block text-sm font-medium text-gray-700 capitalize">
+                                {scriptName.replace(/([A-Z])/g, ' $1')}
+                            </label>
+                            <div className="mt-2 space-y-2">
+                                <div>
+                                    <label className="text-xs text-gray-600">Script Source URL</label>
+                                    <input
+                                        type="text"
+                                        value={localAdConfig.pageScripts[scriptName]?.src || ''}
+                                        onChange={(e) => handlePageScriptChange(scriptName, 'src', e.target.value)}
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    />
+                                </div>
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={localAdConfig.pageScripts[scriptName]?.enabled || false}
+                                        onChange={(e) => handlePageScriptChange(scriptName, 'enabled', e.target.checked)}
+                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                    />
+                                    <label className="ml-2 block text-sm text-gray-900">
+                                        Enabled
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+              </div>
+              
+              <button
+                onClick={handleSaveAdConfig}
+                className="w-full mt-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Simpan Semua Pengaturan Iklan
+              </button>
             </div>
           </div>
         )}
@@ -857,7 +919,7 @@ const AdminDashboard = (props: {
 }
 
 
-// --- Main App Component ---
+// --- MAIN APP COMPONENT ---
 
 const AdsterraApp = () => {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(false);
@@ -873,10 +935,16 @@ const AdsterraApp = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   const defaultAdConfig: AdConfigState = {
-    leaderboard: { key: 'b097cb03c5e6bba0398e0613f4306f55', width: 728, height: 90 },
-    footerBanner: { key: '', width: 728, height: 90 },
-    articleRectangle: { key: '', width: 336, height: 280 },
-    articleSidebar: { key: '', width: 300, height: 600 },
+    slots: {
+      leaderboard: { key: 'b097cb03c5e6bba0398e0613f4306f55', width: 728, height: 90 },
+      footerBanner: { key: '', width: 728, height: 90 },
+      articleRectangle: { key: '', width: 336, height: 280 },
+      articleSidebar: { key: '', width: 300, height: 600 },
+    },
+    pageScripts: {
+      popUnder: { src: '//pl28124730.effectivegatecpm.com/12/78/0f/12780f97b1caf3c203b75c7452ef61ab.js', enabled: true },
+      directLink: { src: '//pl28124934.effectivegatecpm.com/c9/94/f4/c994f4c1a15a972811b49384fa273240.js', enabled: true },
+    }
   };
 
   const [adConfig, setAdConfig] = useState<AdConfigState>(defaultAdConfig);
@@ -902,7 +970,20 @@ const AdsterraApp = () => {
     try {
         const storedConfig = localStorage.getItem('adConfig');
         if (storedConfig) {
-            setAdConfig(prev => ({...defaultAdConfig, ...JSON.parse(storedConfig)}));
+            const parsedConfig = JSON.parse(storedConfig);
+            // Deep merge to ensure new default keys are added if not present in storage
+            const mergedConfig = {
+                ...defaultAdConfig,
+                slots: {
+                    ...defaultAdConfig.slots,
+                    ...parsedConfig.slots,
+                },
+                pageScripts: {
+                    ...defaultAdConfig.pageScripts,
+                    ...parsedConfig.pageScripts,
+                }
+            };
+            setAdConfig(mergedConfig);
         }
     } catch (error) {
         console.error('Error loading ad config:', error);
