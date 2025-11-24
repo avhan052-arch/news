@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import Script from 'next/script';
-import { Share2, TrendingUp, Zap, Clock, Heart, MessageCircle, Bookmark, Home, Settings, FileText, BarChart3, Plus, Edit2, Trash2, Eye, Lock, LogOut, Search } from 'lucide-react';
+import { Share2, TrendingUp, Zap, Clock, Heart, MessageCircle, Bookmark, Home, Settings, FileText, BarChart3, Plus, Edit2, Trash2, Eye, Lock, LogOut, Search, Calendar } from 'lucide-react';
 
 // --- TYPE DEFINITIONS ---
 
@@ -215,6 +215,10 @@ const HomePage = (props: {
                     <Eye size={14} className="mr-1" />
                     {article.views || 0}
                   </span>
+                  <span className="flex items-center">
+                    <Calendar size={14} className="mr-1" />
+                    {new Date(article.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
                 </div>
               </div>
             </div>
@@ -287,6 +291,10 @@ const ArticleDetail = (props: {
             <span className="text-gray-500 text-sm flex items-center">
               <Eye size={14} className="mr-1" />
               {article.views || 0} views
+            </span>
+            <span className="text-gray-500 text-sm flex items-center">
+              <Calendar size={14} className="mr-1" />
+              {new Date(article.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
           </div>
           
