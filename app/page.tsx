@@ -31,6 +31,7 @@ interface Article {
   readTime: string;
   views: number;
   createdAt: number;
+  textAlign?: 'left' | 'right' | 'center' | 'justify';
   adConfig?: {
     articleRectangle?: AdConfig;
     articleSidebar?: AdConfig;
@@ -44,6 +45,7 @@ interface FormData {
   excerpt: string;
   content: string;
   readTime: string;
+  textAlign?: 'left' | 'right' | 'center' | 'justify';
   articleRectangleKey?: string;
   articleSidebarKey?: string;
 }
@@ -310,7 +312,7 @@ const ArticleDetail = (props: {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-8">
           <div className="prose max-w-none">
-            <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+            <div className="whitespace-pre-wrap text-gray-700 leading-relaxed" style={{ textAlign: article.textAlign || 'left' }}>
               {article.content}
             </div>
           </div>
@@ -728,6 +730,19 @@ const AdminDashboard = (props: {
                       placeholder="5 min"
                     />
                   </div>
+                  <div>
+                    <label className="block text-black font-medium mb-2">Perataan Teks</label>
+                    <select
+                      value={formData.textAlign || 'left'}
+                      onChange={(e) => setFormData({...formData, textAlign: e.target.value as 'left' | 'right' | 'center' | 'justify'})}
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-black bg-white"
+                    >
+                      <option value="left">Kiri</option>
+                      <option value="center">Tengah</option>
+                      <option value="right">Kanan</option>
+                      <option value="justify">Rata Kiri-Kanan</option>
+                    </select>
+                  </div>
 
                   <div className="pt-4 mt-4 border-t">
                     <h3 className="text-lg font-semibold text-gray-700 mb-2">Iklan Khusus Artikel (Opsional)</h3>
@@ -770,7 +785,8 @@ const AdminDashboard = (props: {
                           image: '',
                           excerpt: '',
                           content: '',
-                          readTime: '5 min'
+                          readTime: '5 min',
+                          textAlign: 'left'
                         });
                       }}
                       className="px-6 py-2 bg-gray-300 text-black rounded-lg hover:bg-gray-400 transition-colors"
@@ -1100,6 +1116,7 @@ const AdsterraApp = () => {
       excerpt: formData.excerpt,
       content: formData.content,
       readTime: formData.readTime,
+      textAlign: formData.textAlign,
       id: editingArticle ? editingArticle.id : Date.now(),
       views: editingArticle ? editingArticle.views : 0,
       createdAt: editingArticle ? editingArticle.createdAt : Date.now(),
@@ -1158,6 +1175,7 @@ const AdsterraApp = () => {
       excerpt: article.excerpt,
       content: article.content,
       readTime: article.readTime,
+      textAlign: article.textAlign,
       articleRectangleKey: article.adConfig?.articleRectangle?.key || '',
       articleSidebarKey: article.adConfig?.articleSidebar?.key || '',
     });
