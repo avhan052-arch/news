@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import Script from 'next/script';
+import { useSearchParams } from 'next/navigation';
 import { Share2, TrendingUp, Zap, Clock, Heart, MessageCircle, Bookmark, Home, Settings, FileText, BarChart3, Plus, Edit2, Trash2, Eye, Lock, LogOut, Search } from 'lucide-react';
 
 // --- TYPE DEFINITIONS ---
@@ -361,7 +362,6 @@ const FrontendView = (props: {
   loading: boolean;
   selectedArticle: Article | null;
   setSelectedArticle: (article: Article | null) => void;
-  setIsAdmin: (val: boolean | null) => void;
   articles: Article[];
   incrementViews: (id: number) => void;
   selectedCategory: string | null;
@@ -370,11 +370,11 @@ const FrontendView = (props: {
   setSearchQuery: (query: string) => void;
   adConfig: AdConfigState;
 }) => {
-  const { loading, selectedArticle, setSelectedArticle, setIsAdmin, articles, incrementViews, selectedCategory, setSelectedCategory, searchQuery, setSearchQuery, adConfig } = props;
+  const { loading, selectedArticle, setSelectedArticle, articles, incrementViews, selectedCategory, setSelectedCategory, searchQuery, setSearchQuery, adConfig } = props;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {Object.values(adConfig.pageScripts).map(script => (
+      {adConfig.pageScripts && Object.values(adConfig.pageScripts).map(script => (
           script.enabled && script.src && (
               <Script 
                   key={script.src}
@@ -417,13 +417,7 @@ const FrontendView = (props: {
                 </div>
               </div>
             </div>
-
-            <button
-              onClick={() => setIsAdmin(null)}
-              className="text-sm text-gray-500 hover:text-gray-700 flex-shrink-0"
-            >
-              Admin →
-            </button>
+            
           </div>
         </div>
       </header>
@@ -475,7 +469,7 @@ const AdminLogin = ({ password, setPassword, handleLogin, setIsAdmin }: { passwo
             className="w-full px-4 py-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Masukkan password admin"
           />
-          {/* <p className="text-xs text-black mt-2">Default: admin123</p> */}
+          <p className="text-xs text-black mt-2">Default: admin123</p>
         </div>
         <button
           onClick={handleLogin}
@@ -840,7 +834,7 @@ const AdminDashboard = (props: {
                                         type="text"
                                         value={localAdConfig.slots[slotName]?.key || ''}
                                         onChange={(e) => handleSlotConfigChange(slotName, 'key', e.target.value)}
-                                        className="mt-1 block w-full px-3 py-2 text-black border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                     />
                                 </div>
                                 <div className="flex gap-4">
@@ -850,7 +844,7 @@ const AdminDashboard = (props: {
                                             type="number"
                                             value={localAdConfig.slots[slotName]?.width || 0}
                                             onChange={(e) => handleSlotConfigChange(slotName, 'width', e.target.value)}
-                                            className="mt-1 block w-full px-3 py-2 text-black border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         />
                                     </div>
                                     <div className="flex-1">
@@ -859,7 +853,7 @@ const AdminDashboard = (props: {
                                             type="number"
                                             value={localAdConfig.slots[slotName]?.height || 0}
                                             onChange={(e) => handleSlotConfigChange(slotName, 'height', e.target.value)}
-                                            className="mt-1 block w-full px-3 py-2 text-black border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                         />
                                     </div>
                                 </div>
@@ -869,7 +863,7 @@ const AdminDashboard = (props: {
                 </div>
               </div>
 
-              <div className="p-4 bg-purple-50 rounded-lg">
+               <div className="p-4 bg-purple-50 rounded-lg">
                 <h3 className="font-semibold text-gray-800 mb-4">Pengaturan Skrip Halaman</h3>
                  <div className="space-y-4">
                     {Object.keys(localAdConfig.pageScripts).map(scriptName => (
@@ -884,17 +878,18 @@ const AdminDashboard = (props: {
                                         type="text"
                                         value={localAdConfig.pageScripts[scriptName]?.src || ''}
                                         onChange={(e) => handlePageScriptChange(scriptName, 'src', e.target.value)}
-                                        className="mt-1 block w-full px-3 py-2 text-black border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                     />
                                 </div>
                                 <div className="flex items-center">
                                     <input
+                                        id={`enabled-${scriptName}`}
                                         type="checkbox"
                                         checked={localAdConfig.pageScripts[scriptName]?.enabled || false}
                                         onChange={(e) => handlePageScriptChange(scriptName, 'enabled', e.target.checked)}
-                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded text-black"
+                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                     />
-                                    <label className="ml-2 block text-sm text-gray-900">
+                                    <label htmlFor={`enabled-${scriptName}`} className="ml-2 block text-sm text-gray-900">
                                         Enabled
                                     </label>
                                 </div>
@@ -921,7 +916,7 @@ const AdminDashboard = (props: {
 
 // --- MAIN APP COMPONENT ---
 
-const AdsterraApp = () => {
+function App() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(false);
   const [password, setPassword] = useState('');
   const [articles, setArticles] = useState<Article[]>([]);
@@ -971,7 +966,6 @@ const AdsterraApp = () => {
         const storedConfig = localStorage.getItem('adConfig');
         if (storedConfig) {
             const parsedConfig = JSON.parse(storedConfig);
-            // Deep merge to ensure new default keys are added if not present in storage
             const mergedConfig = {
                 ...defaultAdConfig,
                 slots: {
@@ -1175,7 +1169,6 @@ const AdsterraApp = () => {
     loading={loading}
     selectedArticle={selectedArticle}
     setSelectedArticle={setSelectedArticle}
-    setIsAdmin={setIsAdmin}
     articles={articles}
     incrementViews={incrementViews}
     selectedCategory={selectedCategory}
@@ -1185,5 +1178,15 @@ const AdsterraApp = () => {
     adConfig={adConfig}
   />;
 };
+
+const AdsterraApp = () => {
+    // This is a wrapper component because useSearchParams can only be used in a client component
+    // that is a child of a <Suspense> boundary. In Next.js App Router, the page itself is the boundary.
+    return (
+        <React.Suspense fallback={<div>Loading...</div>}>
+            <App />
+        </React.Suspense>
+    );
+}
 
 export default AdsterraApp;
