@@ -277,10 +277,10 @@ const AdminLogin = ({ password, setPassword, handleLogin, setIsAdmin }: { passwo
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Masukkan password admin"
           />
-          <p className="text-xs text-gray-500 mt-2">Default: admin123</p>
+          <p className="text-xs text-black mt-2">Default: admin123</p>
         </div>
         <button
           onClick={handleLogin}
@@ -435,7 +435,7 @@ const AdminDashboard = (props: {
                       type="text"
                       value={formData.title}
                       onChange={(e) => setFormData({...formData, title: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
                     />
                   </div>
                   <div>
@@ -444,7 +444,7 @@ const AdminDashboard = (props: {
                       type="text"
                       value={formData.category}
                       onChange={(e) => setFormData({...formData, category: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
                     />
                   </div>
                   <div>
@@ -453,7 +453,7 @@ const AdminDashboard = (props: {
                       type="url"
                       value={formData.image}
                       onChange={(e) => setFormData({...formData, image: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
                     />
                   </div>
                   <div>
@@ -461,7 +461,7 @@ const AdminDashboard = (props: {
                     <textarea
                       value={formData.excerpt}
                       onChange={(e) => setFormData({...formData, excerpt: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
                       rows={2}
                     />
                   </div>
@@ -470,7 +470,7 @@ const AdminDashboard = (props: {
                     <textarea
                       value={formData.content}
                       onChange={(e) => setFormData({...formData, content: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
                       rows={10}
                     />
                   </div>
@@ -480,7 +480,7 @@ const AdminDashboard = (props: {
                       type="text"
                       value={formData.readTime}
                       onChange={(e) => setFormData({...formData, readTime: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
                       placeholder="5 min"
                     />
                   </div>
