@@ -822,8 +822,8 @@ const AdminDashboard = (props: {
             <div className="space-y-6">
               <div className="p-4 bg-blue-50 rounded-lg">
                 <h3 className="font-semibold text-gray-800 mb-2">Informasi Sistem</h3>
-                <p className="text-sm text-gray-600">Storage: Menggunakan persistent storage (localStorage)</p>
-                <p className="text-sm text-gray-600">Data tersimpan otomatis</p>
+                <p className="text-sm text-gray-600">Penyimpanan: Cloudflare KV</p>
+                <p className="text-sm text-gray-600">Data tersimpan secara otomatis di cloud.</p>
               </div>
               <div className="p-4 bg-yellow-50 rounded-lg">
                 <h3 className="font-semibold text-gray-800 mb-2">Password Admin</h3>
@@ -969,24 +969,25 @@ const AdsterraApp = () => {
 
   useEffect(() => {
     loadArticles();
-    loadStats();
     loadAdConfig();
   }, []);
 
-  const loadAdConfig = () => {
+  const loadAdConfig = async () => {
     try {
-        const storedConfig = localStorage.getItem('adConfig');
-        if (storedConfig) {
-            const parsedConfig = JSON.parse(storedConfig);
+        const response = await fetch('/api/config');
+        if (!response.ok) throw new Error('Failed to fetch ad config');
+        const storedConfig = await response.json();
+        
+        if (storedConfig && Object.keys(storedConfig).length > 0) {
             const mergedConfig = {
                 ...defaultAdConfig,
                 slots: {
                     ...defaultAdConfig.slots,
-                    ...parsedConfig.slots,
+                    ...storedConfig.slots,
                 },
                 pageScripts: {
                     ...defaultAdConfig.pageScripts,
-                    ...parsedConfig.pageScripts,
+                    ...storedConfig.pageScripts,
                 }
             };
             setAdConfig(mergedConfig);
@@ -996,22 +997,28 @@ const AdsterraApp = () => {
     }
   };
 
-  const saveAdConfig = (newConfig: AdConfigState) => {
+  const saveAdConfig = async (newConfig: AdConfigState) => {
     try {
-        localStorage.setItem('adConfig', JSON.stringify(newConfig));
         setAdConfig(newConfig);
+        await fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newConfig),
+        });
     } catch (error) {
         console.error('Error saving ad config:', error);
         alert('Gagal menyimpan pengaturan iklan');
     }
   };
 
-  const loadArticles = () => {
+  const loadArticles = async () => {
     try {
-      const result = localStorage.getItem('articles');
-      if (result) {
-        setArticles(JSON.parse(result));
-      } else {
+      setLoading(true);
+      const response = await fetch('/api/articles');
+      if (!response.ok) throw new Error('Failed to fetch articles');
+      let articlesData = await response.json();
+
+      if (!articlesData || articlesData.length === 0) {
         const defaultArticles: Article[] = [
           {
             id: Date.now(),
@@ -1026,7 +1033,9 @@ const AdsterraApp = () => {
           }
         ];
         setArticles(defaultArticles);
-        localStorage.setItem('articles', JSON.stringify(defaultArticles));
+        await saveArticles(defaultArticles);
+      } else {
+        setArticles(articlesData);
       }
     } catch (error) {
       console.error('Error loading articles:', error);
@@ -1036,6 +1045,7 @@ const AdsterraApp = () => {
     }
   };
 
+  // The loadStats function still uses localStorage. This is fine for non-critical, client-specific stats.
   const loadStats = () => {
     try {
       const result = localStorage.getItem('stats');
@@ -1047,13 +1057,17 @@ const AdsterraApp = () => {
     }
   };
 
-  const saveArticles = (newArticles: Article[]) => {
+  const saveArticles = async (newArticles: Article[]) => {
     try {
-      localStorage.setItem('articles', JSON.stringify(newArticles));
-      setArticles(newArticles);
+        setArticles(newArticles); // Optimistic update
+        await fetch('/api/articles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newArticles),
+        });
     } catch (error) {
-      console.error('Error saving articles:', error);
-      alert('Gagal menyimpan artikel');
+        console.error('Error saving articles:', error);
+        alert('Gagal menyimpan artikel');
     }
   };
 
@@ -1071,7 +1085,7 @@ const AdsterraApp = () => {
     setActiveTab('articles');
   };
 
-  const handleSubmitArticle = () => {
+  const handleSubmitArticle = async () => {
     const articleData: Article = {
       title: formData.title,
       category: formData.category,
@@ -1103,7 +1117,7 @@ const AdsterraApp = () => {
       newArticles = [articleData, ...articles];
     }
 
-    saveArticles(newArticles);
+    await saveArticles(newArticles);
     
     setShowArticleForm(false);
     setEditingArticle(null);
@@ -1134,18 +1148,18 @@ const AdsterraApp = () => {
     setShowArticleForm(true);
   };
 
-  const handleDeleteArticle = (id: number) => {
+  const handleDeleteArticle = async (id: number) => {
     if (window.confirm('Yakin ingin menghapus artikel ini?')) {
       const newArticles = articles.filter(a => a.id !== id);
-      saveArticles(newArticles);
+      await saveArticles(newArticles);
     }
   };
 
-  const incrementViews = (articleId: number) => {
+  const incrementViews = async (articleId: number) => {
     const newArticles = articles.map(a => 
       a.id === articleId ? { ...a, views: (a.views || 0) + 1 } : a
     );
-    saveArticles(newArticles);
+    await saveArticles(newArticles);
   };
 
   if (isAdmin === true) {
