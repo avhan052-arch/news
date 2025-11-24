@@ -510,7 +510,8 @@ const AdminDashboard = (props: {
   handleDeleteArticle: (id: number) => void,
   handleSubmitArticle: () => void,
   adConfig: AdConfigState,
-  saveAdConfig: (config: AdConfigState) => void
+  saveAdConfig: (config: AdConfigState) => void,
+  showSuccessMessage: boolean
 }) => {
   const {
     handleLogout,
@@ -527,7 +528,8 @@ const AdminDashboard = (props: {
     handleDeleteArticle,
     handleSubmitArticle,
     adConfig,
-    saveAdConfig
+    saveAdConfig,
+    showSuccessMessage
   } = props;
 
   const [localAdConfig, setLocalAdConfig] = useState(adConfig);
@@ -571,6 +573,11 @@ const AdminDashboard = (props: {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {showSuccessMessage && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+          Artikel berhasil disimpan!
+        </div>
+      )}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -940,6 +947,7 @@ const AdsterraApp = () => {
   const [stats, setStats] = useState({ views: 0, clicks: 0, earnings: 0 });
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   
   const defaultAdConfig: AdConfigState = {
     slots: {
@@ -1058,16 +1066,15 @@ const AdsterraApp = () => {
   };
 
   const saveArticles = async (newArticles: Article[]) => {
-    try {
-        setArticles(newArticles); // Optimistic update
-        await fetch('/api/articles', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newArticles),
-        });
-    } catch (error) {
-        console.error('Error saving articles:', error);
-        alert('Gagal menyimpan artikel');
+    const response = await fetch('/api/articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newArticles),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal menyimpan artikel. Status: ' + response.status);
     }
   };
 
@@ -1116,8 +1123,17 @@ const AdsterraApp = () => {
     } else {
       newArticles = [articleData, ...articles];
     }
+    
+    setArticles(newArticles); // Optimistic update
 
-    await saveArticles(newArticles);
+    try {
+        await saveArticles(newArticles);
+        setShowSuccessMessage(true); // Show success message
+    } catch (error) {
+        console.error('Error saving articles:', error);
+        alert(`Gagal menyimpan artikel ke backend. Pastikan kredensial Cloudflare Anda sudah benar di .env.local.\n\nError: ${(error as Error).message}`);
+        loadArticles(); // Revert optimistic update
+    }
     
     setShowArticleForm(false);
     setEditingArticle(null);
@@ -1162,6 +1178,15 @@ const AdsterraApp = () => {
     await saveArticles(newArticles);
   };
 
+  useEffect(() => {
+    if (showSuccessMessage) {
+      const timer = setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessMessage]);
+
   if (isAdmin === true) {
     return <AdminDashboard 
       handleLogout={handleLogout}
@@ -1179,6 +1204,7 @@ const AdsterraApp = () => {
       handleSubmitArticle={handleSubmitArticle}
       adConfig={adConfig}
       saveAdConfig={saveAdConfig}
+      showSuccessMessage={showSuccessMessage}
     />; 
   }
   
