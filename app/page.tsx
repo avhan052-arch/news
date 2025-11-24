@@ -711,7 +711,7 @@ const AdminDashboard = (props: {
                       <img src={article.image} alt={article.title} className="w-32 h-20 object-cover rounded-lg" />
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-800">{article.title}</h3>
-                        <p className="text-sm text-gray-500 mt-1">{article.category} • {article.readTime} • {article.views || 0} views</p>
+                        <p className="text-sm text-gray-500 mt-1">{article.category} • {article.readTime} • {article.views || 0} views • {article.likes || 0} likes</p>
                       </div>
                       <div className="flex space-x-2">
                         <button
@@ -1056,6 +1056,12 @@ const AdsterraApp = () => {
   useEffect(() => {
     loadArticles();
     loadAdConfig();
+
+    const intervalId = setInterval(() => {
+      loadArticles(false);
+    }, 10000); // Poll every 10 seconds
+
+    return () => clearInterval(intervalId); // Cleanup on unmount
   }, []);
 
   const loadAdConfig = async () => {
@@ -1097,37 +1103,42 @@ const AdsterraApp = () => {
     }
   };
 
-  const loadArticles = async () => {
+  const loadArticles = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const response = await fetch('/api/articles');
       if (!response.ok) throw new Error('Failed to fetch articles');
-      let articlesData = await response.json();
+      const articlesData = await response.json();
 
       if (!articlesData || articlesData.length === 0) {
-        const defaultArticles: Article[] = [
-          {
-            id: Date.now(),
-            title: "10 Tips Menghasilkan Uang dari Internet untuk Pemula",
-            category: "Bisnis Online",
-            image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=400&fit=crop",
-            excerpt: "Panduan lengkap untuk memulai bisnis online dan mendapatkan penghasilan dari rumah...",
-            content: "Di era digital seperti sekarang, peluang untuk menghasilkan uang secara online semakin terbuka lebar. Banyak orang yang telah meraih kesuksesan finansial melalui internet.\n\nBeberapa cara yang bisa Anda coba:\n1. Affiliate Marketing\n2. Dropshipping\n3. Content Creation\n4. Freelancing\n5. Online Course\n\nKunci kesuksesan adalah konsistensi dan terus belajar. Jangan menyerah jika hasil belum terlihat dalam waktu singkat.",
-            readTime: "5 min",
-            views: 1250,
-            createdAt: Date.now()
-          }
-        ];
-        setArticles(defaultArticles);
-        await saveArticles(defaultArticles);
+        if (showLoading) { // Only create default articles on initial, visible load
+          const defaultArticles: Article[] = [
+            {
+              id: Date.now(),
+              title: "10 Tips Menghasilkan Uang dari Internet untuk Pemula",
+              category: "Bisnis Online",
+              image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=400&fit=crop",
+              excerpt: "Panduan lengkap untuk memulai bisnis online dan mendapatkan penghasilan dari rumah...",
+              content: "Di era digital seperti sekarang, peluang untuk menghasilkan uang secara online semakin terbuka lebar. Banyak orang yang telah meraih kesuksesan finansial melalui internet.\n\nBeberapa cara yang bisa Anda coba:\n1. Affiliate Marketing\n2. Dropshipping\n3. Content Creation\n4. Freelancing\n5. Online Course\n\nKunci kesuksesan adalah konsistensi dan terus belajar. Jangan menyerah jika hasil belum terlihat dalam waktu singkat.",
+              readTime: "5 min",
+              views: 1250,
+              createdAt: Date.now()
+            }
+          ];
+          setArticles(defaultArticles);
+          await saveArticles(defaultArticles);
+        } else {
+            // If it's a background poll and there are no articles, clear the state
+            setArticles([]);
+        }
       } else {
         setArticles(articlesData);
       }
     } catch (error) {
       console.error('Error loading articles:', error);
-      setArticles([]);
+      if (showLoading) setArticles([]);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
