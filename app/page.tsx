@@ -1,8 +1,15 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import Script from 'next/script';
 import { Share2, TrendingUp, Zap, Clock, Heart, MessageCircle, Bookmark, Home, Settings, FileText, BarChart3, Plus, Edit2, Trash2, Eye, Lock, LogOut, Search } from 'lucide-react';
 
 // Type definitions
+interface AdConfig {
+    key: string;
+    width: number;
+    height: number;
+}
+
 interface Article {
   id: number;
   title: string;
@@ -13,6 +20,10 @@ interface Article {
   readTime: string;
   views: number;
   createdAt: number;
+  adConfig?: {
+    articleRectangle?: AdConfig;
+    articleSidebar?: AdConfig;
+  }
 }
 
 interface FormData {
@@ -22,12 +33,8 @@ interface FormData {
   excerpt: string;
   content: string;
   readTime: string;
-}
-
-interface AdConfig {
-    key: string;
-    width: number;
-    height: number;
+  articleRectangleKey?: string;
+  articleSidebarKey?: string;
 }
 
 interface AdConfigState {
@@ -72,8 +79,6 @@ const AdsterraBanner = ({ adKey, width, height }: { adKey: string, width: number
     }
 
     const scriptContainer = document.createElement('div');
-    // Using key on a DOM element created with createElement has no effect in React reconciliation
-    // But it can be useful for debugging. The key for re-rendering is on the component itself.
     scriptContainer.setAttribute('data-ad-key', adKey);
 
     const configScript = document.createElement('script');
@@ -98,11 +103,8 @@ const AdsterraBanner = ({ adKey, width, height }: { adKey: string, width: number
     
     container.appendChild(scriptContainer);
 
-    // No cleanup function needed if we are clearing on mount
-    // This ensures that if props change, the ad re-loads.
   }, [adKey, width, height]);
 
-  // Add a key to the parent div to help React with re-rendering when adKey changes
   return <div key={adKey} ref={containerRef} style={{ width: `${width}px`, height: `${height}px`, display: 'inline-block' }} />;
 };
 
@@ -239,8 +241,14 @@ const ArticleDetail = (props: {
   adConfig: AdConfigState
 }) => {
   const { article, setSelectedArticle, articles, incrementViews, setSelectedCategory, adConfig } = props;
-  const articleRectangleAd = adConfig.articleRectangle;
-  const articleSidebarAd = adConfig.articleSidebar;
+  
+  const articleRectangleAd = article.adConfig?.articleRectangle?.key 
+    ? article.adConfig.articleRectangle 
+    : adConfig.articleRectangle;
+
+  const articleSidebarAd = article.adConfig?.articleSidebar?.key
+    ? article.adConfig.articleSidebar
+    : adConfig.articleSidebar;
 
   return (
     <div className="space-y-6">
@@ -361,6 +369,11 @@ const FrontendView = (props: {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Script 
+        id="adsterra-pop-under"
+        strategy="afterInteractive"
+        src="//pl28124730.effectivegatecpm.com/12/78/0f/12780f97b1caf3c203b75c7452ef61ab.js" 
+      />
       <div className="sticky top-0 z-50 bg-white shadow-sm">
         <div className="max-w-7xl mx-auto">
           <AdSlot format="Social Bar (Sticky)" width="100%" height="60px" />
@@ -515,11 +528,12 @@ const AdminDashboard = (props: {
   }, [adConfig]);
 
   const handleAdConfigChange = (slot: string, field: keyof AdConfig, value: string | number) => {
+    const isNumeric = field === 'width' || field === 'height';
     setLocalAdConfig(prev => ({
         ...prev,
         [slot]: {
             ...prev[slot],
-            [field]: value
+            [field]: isNumeric ? Number(value) : value
         }
     }));
   };
@@ -682,7 +696,32 @@ const AdminDashboard = (props: {
                       placeholder="5 min"
                     />
                   </div>
-                  <div className="flex space-x-4">
+
+                  <div className="pt-4 mt-4 border-t">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">Iklan Khusus Artikel (Opsional)</h3>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Article Rectangle Ad Key</label>
+                        <input
+                            type="text"
+                            value={formData.articleRectangleKey || ''}
+                            onChange={(e) => setFormData({...formData, articleRectangleKey: e.target.value})}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            placeholder="Gunakan key global jika kosong"
+                        />
+                    </div>
+                    <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700">Article Sidebar Ad Key</label>
+                        <input
+                            type="text"
+                            value={formData.articleSidebarKey || ''}
+                            onChange={(e) => setFormData({...formData, articleSidebarKey: e.target.value})}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            placeholder="Gunakan key global jika kosong"
+                        />
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-4 pt-4">
                     <button
                       onClick={handleSubmitArticle}
                       className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -693,14 +732,7 @@ const AdminDashboard = (props: {
                       onClick={() => {
                         setShowArticleForm(false);
                         setEditingArticle(null);
-                        setFormData({
-                          title: '',
-                          category: '',
-                          image: '',
-                          excerpt: '',
-                          content: '',
-                          readTime: '5 min'
-                        });
+                        setFormData({ title: '', category: '', image: '', excerpt: '', content: '', readTime: '5 min', articleRectangleKey: '', articleSidebarKey: '' });
                       }}
                       className="px-6 py-2 bg-gray-300 text-black rounded-lg hover:bg-gray-400 transition-colors"
                     >
@@ -768,19 +800,44 @@ const AdminDashboard = (props: {
               </div>
 
               <div className="p-4 bg-green-50 rounded-lg">
-                <h3 className="font-semibold text-gray-800 mb-4">Pengaturan Iklan</h3>
+                <h3 className="font-semibold text-gray-800 mb-4">Pengaturan Iklan Global</h3>
                 <div className="space-y-4">
                     {Object.keys(localAdConfig).map(slotName => (
-                        <div key={slotName}>
+                        <div key={slotName} className="p-3 bg-white rounded-md shadow-sm">
                             <label className="block text-sm font-medium text-gray-700 capitalize">
-                                {slotName.replace(/([A-Z])/g, ' $1')} Ad Key
+                                {slotName.replace(/([A-Z])/g, ' $1')}
                             </label>
-                            <input
-                                type="text"
-                                value={localAdConfig[slotName]?.key || ''}
-                                onChange={(e) => handleAdConfigChange(slotName, 'key', e.target.value)}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            />
+                            <div className="mt-1 space-y-2">
+                                <div>
+                                    <label className="text-xs text-gray-600">Ad Key</label>
+                                    <input
+                                        type="text"
+                                        value={localAdConfig[slotName]?.key || ''}
+                                        onChange={(e) => handleAdConfigChange(slotName, 'key', e.target.value)}
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    />
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="flex-1">
+                                        <label className="text-xs text-gray-600">Width (px)</label>
+                                        <input
+                                            type="number"
+                                            value={localAdConfig[slotName]?.width || 0}
+                                            onChange={(e) => handleAdConfigChange(slotName, 'width', e.target.value)}
+                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-xs text-gray-600">Height (px)</label>
+                                        <input
+                                            type="number"
+                                            value={localAdConfig[slotName]?.height || 0}
+                                            onChange={(e) => handleAdConfigChange(slotName, 'height', e.target.value)}
+                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     ))}
                     <button
@@ -830,7 +887,9 @@ const AdsterraApp = () => {
     image: '',
     excerpt: '',
     content: '',
-    readTime: '5 min'
+    readTime: '5 min',
+    articleRectangleKey: '',
+    articleSidebarKey: '',
   });
 
   useEffect(() => {
@@ -843,7 +902,6 @@ const AdsterraApp = () => {
     try {
         const storedConfig = localStorage.getItem('adConfig');
         if (storedConfig) {
-            // Merge stored config with defaults to ensure all keys exist
             setAdConfig(prev => ({...defaultAdConfig, ...JSON.parse(storedConfig)}));
         }
     } catch (error) {
@@ -928,10 +986,27 @@ const AdsterraApp = () => {
 
   const handleSubmitArticle = () => {
     const articleData: Article = {
-      ...formData,
+      title: formData.title,
+      category: formData.category,
+      image: formData.image,
+      excerpt: formData.excerpt,
+      content: formData.content,
+      readTime: formData.readTime,
       id: editingArticle ? editingArticle.id : Date.now(),
       views: editingArticle ? editingArticle.views : 0,
-      createdAt: editingArticle ? editingArticle.createdAt : Date.now()
+      createdAt: editingArticle ? editingArticle.createdAt : Date.now(),
+      adConfig: {
+        articleRectangle: {
+          key: formData.articleRectangleKey || '',
+          width: 336,
+          height: 280,
+        },
+        articleSidebar: {
+          key: formData.articleSidebarKey || '',
+          width: 300,
+          height: 600,
+        }
+      }
     };
 
     let newArticles: Article[];
@@ -951,7 +1026,9 @@ const AdsterraApp = () => {
       image: '',
       excerpt: '',
       content: '',
-      readTime: '5 min'
+      readTime: '5 min',
+      articleRectangleKey: '',
+      articleSidebarKey: '',
     });
   };
 
@@ -963,7 +1040,9 @@ const AdsterraApp = () => {
       image: article.image,
       excerpt: article.excerpt,
       content: article.content,
-      readTime: article.readTime
+      readTime: article.readTime,
+      articleRectangleKey: article.adConfig?.articleRectangle?.key || '',
+      articleSidebarKey: article.adConfig?.articleSidebar?.key || '',
     });
     setShowArticleForm(true);
   };
