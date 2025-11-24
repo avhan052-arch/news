@@ -31,6 +31,7 @@ interface Article {
   readTime: string;
   views: number;
   createdAt: number;
+  likes?: number;
   textAlign?: 'left' | 'right' | 'center' | 'justify';
   adConfig?: {
     articleRectangle?: AdConfig;
@@ -248,10 +249,54 @@ const ArticleDetail = (props: {
   setSelectedArticle: (article: Article | null) => void, 
   articles: Article[], 
   incrementViews: (id: number) => void, 
+  incrementLikes: (id: number) => void, 
+  decrementLikes: (id: number) => void, 
   setSelectedCategory: (category: string | null) => void,
   adConfig: { [key: string]: AdConfig }
 }) => {
-  const { article, setSelectedArticle, articles, incrementViews, setSelectedCategory, adConfig } = props;
+  const { article, setSelectedArticle, articles, incrementViews, incrementLikes, decrementLikes, setSelectedCategory, adConfig } = props;
+  const [isLiked, setIsLiked] = useState(false);
+
+  useEffect(() => {
+    const likedArticles = JSON.parse(localStorage.getItem('liked_articles') || '[]');
+    if (likedArticles.includes(article.id)) {
+      setIsLiked(true);
+    }
+  }, [article.id]);
+
+  const handleLikeClick = () => {
+    const likedArticles = JSON.parse(localStorage.getItem('liked_articles') || '[]');
+    
+    if (!isLiked) {
+        incrementLikes(article.id);
+        localStorage.setItem('liked_articles', JSON.stringify([...likedArticles, article.id]));
+        setIsLiked(true);
+    } else {
+        decrementLikes(article.id);
+        const newLikedArticles = likedArticles.filter((id: number) => id !== article.id);
+        localStorage.setItem('liked_articles', JSON.stringify(newLikedArticles));
+        setIsLiked(false);
+    }
+  };
+
+  const handleShareClick = async () => {
+    const shareData = {
+      title: article.title,
+      text: article.excerpt,
+      url: window.location.href,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        alert("Share function is not supported in your browser.");
+      }
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('Error sharing:', error);
+      }
+    }
+  };
   
   const articleRectangleAd = article.adConfig?.articleRectangle?.key 
     ? article.adConfig.articleRectangle 
@@ -301,11 +346,18 @@ const ArticleDetail = (props: {
           <h1 className="text-4xl font-bold text-gray-800 mb-6">{article.title}</h1>
           
           <div className="flex items-center space-x-6 pb-6 border-b">
-            <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
-              <Heart size={20} />
-              <span>Like</span>
+            <button 
+              onClick={handleLikeClick}
+              className={`flex items-center space-x-2 transition-colors ${
+                isLiked 
+                  ? 'text-pink-500 hover:text-pink-600' 
+                  : 'text-gray-600 hover:text-pink-500'
+              }`}
+            >
+              <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />
+              <span>{article.likes || 0} Likes</span>
             </button>
-            <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
+            <button onClick={handleShareClick} className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
               <Share2 size={20} />
               <span>Share</span>
             </button>
@@ -374,13 +426,15 @@ const FrontendView = (props: {
   setIsAdmin: (val: boolean | null) => void;
   articles: Article[];
   incrementViews: (id: number) => void;
+  incrementLikes: (id: number) => void;
+  decrementLikes: (id: number) => void;
   selectedCategory: string | null;
   setSelectedCategory: (category: string | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   adConfig: AdConfigState;
 }) => {
-  const { loading, selectedArticle, setSelectedArticle, setIsAdmin, articles, incrementViews, selectedCategory, setSelectedCategory, searchQuery, setSearchQuery, adConfig } = props;
+  const { loading, selectedArticle, setSelectedArticle, setIsAdmin, articles, incrementViews, incrementLikes, decrementLikes, selectedCategory, setSelectedCategory, searchQuery, setSearchQuery, adConfig } = props;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -444,7 +498,7 @@ const FrontendView = (props: {
             <p className="text-gray-500">Loading...</p>
           </div>
         ) : selectedArticle ? (
-          <ArticleDetail article={selectedArticle} setSelectedArticle={setSelectedArticle} articles={articles} incrementViews={incrementViews} setSelectedCategory={setSelectedCategory} adConfig={adConfig.slots} />
+          <ArticleDetail article={selectedArticle} setSelectedArticle={setSelectedArticle} articles={articles} incrementViews={incrementViews} incrementLikes={incrementLikes} decrementLikes={decrementLikes} setSelectedCategory={setSelectedCategory} adConfig={adConfig.slots} />
         ) : (
           <HomePage articles={articles} setSelectedArticle={setSelectedArticle} incrementViews={incrementViews} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} searchQuery={searchQuery} adConfig={adConfig.slots} />
         )}
@@ -1204,6 +1258,20 @@ const AdsterraApp = () => {
     await saveArticles(newArticles);
   };
 
+  const incrementLikes = async (articleId: number) => {
+    const newArticles = articles.map(a => 
+      a.id === articleId ? { ...a, likes: (a.likes || 0) + 1 } : a
+    );
+    await saveArticles(newArticles);
+  };
+
+  const decrementLikes = async (articleId: number) => {
+    const newArticles = articles.map(a => 
+      a.id === articleId ? { ...a, likes: Math.max(0, (a.likes || 0) - 1) } : a
+    );
+    await saveArticles(newArticles);
+  };
+
   useEffect(() => {
     if (showSuccessMessage) {
       const timer = setTimeout(() => {
@@ -1250,6 +1318,8 @@ const AdsterraApp = () => {
     setIsAdmin={setIsAdmin}
     articles={articles}
     incrementViews={incrementViews}
+    incrementLikes={incrementLikes}
+    decrementLikes={decrementLikes}
     selectedCategory={selectedCategory}
     setSelectedCategory={setSelectedCategory}
     searchQuery={searchQuery}
