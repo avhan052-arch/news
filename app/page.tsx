@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Share2, TrendingUp, Zap, Clock, Heart, MessageCircle, Bookmark, Home, Settings, FileText, BarChart3, Plus, Edit2, Trash2, Eye, Lock, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Share2, TrendingUp, Zap, Clock, Heart, MessageCircle, Bookmark, Home, Settings, FileText, BarChart3, Plus, Edit2, Trash2, Eye, Lock, LogOut, Search } from 'lucide-react';
 
 // Type definitions
 interface Article {
@@ -23,6 +23,17 @@ interface FormData {
   content: string;
   readTime: string;
 }
+
+interface AdConfig {
+    key: string;
+    width: number;
+    height: number;
+}
+
+interface AdConfigState {
+    [key: string]: AdConfig;
+}
+
 
 interface AdSlotProps {
   format: string;
@@ -48,161 +59,306 @@ const AdSlot = ({ format, width, height, className = "" }: AdSlotProps) => (
   </div>
 );
 
+const AdsterraBanner = ({ adKey, width, height }: { adKey: string, width: number, height: number }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !adKey) return;
+
+    // Clear previous ads to re-mount
+    if (container.children.length > 0) {
+        container.innerHTML = '';
+    }
+
+    const scriptContainer = document.createElement('div');
+    // Using key on a DOM element created with createElement has no effect in React reconciliation
+    // But it can be useful for debugging. The key for re-rendering is on the component itself.
+    scriptContainer.setAttribute('data-ad-key', adKey);
+
+    const configScript = document.createElement('script');
+    configScript.type = 'text/javascript';
+    configScript.innerHTML = `
+        atOptions = {
+            'key' : '${adKey}',
+            'format' : 'iframe',
+            'height' : ${height},
+            'width' : ${width},
+            'params' : {}
+        };
+    `;
+
+    const invokeScript = document.createElement('script');
+    invokeScript.type = 'text/javascript';
+    invokeScript.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
+    invokeScript.async = true;
+
+    scriptContainer.appendChild(configScript);
+    scriptContainer.appendChild(invokeScript);
+    
+    container.appendChild(scriptContainer);
+
+    // No cleanup function needed if we are clearing on mount
+    // This ensures that if props change, the ad re-loads.
+  }, [adKey, width, height]);
+
+  // Add a key to the parent div to help React with re-rendering when adKey changes
+  return <div key={adKey} ref={containerRef} style={{ width: `${width}px`, height: `${height}px`, display: 'inline-block' }} />;
+};
+
 
 // --- Frontend Components ---
 
-const HomePage = ({ articles, setSelectedArticle, incrementViews }: { articles: Article[], setSelectedArticle: (article: Article) => void, incrementViews: (id: number) => void }) => (
-  <div className="space-y-8">
-    <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
-      <div className="max-w-3xl">
-        <h1 className="text-4xl font-bold mb-4">Portal Informasi & Tips Terkini</h1>
-        <p className="text-xl text-blue-100">Dapatkan informasi terbaru tentang bisnis, teknologi, dan lifestyle</p>
-      </div>
-    </div>
+const HomePage = (props: { 
+    articles: Article[], 
+    setSelectedArticle: (article: Article | null) => void, 
+    incrementViews: (id: number) => void, 
+    selectedCategory: string | null, 
+    setSelectedCategory: (category: string | null) => void, 
+    searchQuery: string,
+    adConfig: AdConfigState
+}) => {
+  const { articles, setSelectedArticle, incrementViews, selectedCategory, setSelectedCategory, searchQuery, adConfig } = props;
 
-    <div className="flex justify-center">
-      <AdSlot format="Leaderboard Banner (728x90)" width="728px" height="90px" />
-    </div>
+  const articlesByCategory = selectedCategory 
+    ? articles.filter(a => a.category === selectedCategory) 
+    : articles;
 
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {articles.map((article) => (
-        <div 
-          key={article.id}
-          onClick={() => {
-            setSelectedArticle(article);
-            incrementViews(article.id);
-          }}
-          className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer overflow-hidden group"
-        >
-          <div className="relative h-48 overflow-hidden">
-            <img 
-              src={article.image} 
-              alt={article.title}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-            />
-            <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-              {article.category}
-            </div>
+  const articlesToDisplay = searchQuery
+    ? articlesByCategory.filter(a => 
+        a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        a.content.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : articlesByCategory;
+
+  const leaderboardAd = adConfig.leaderboard;
+  const footerBannerAd = adConfig.footerBanner;
+
+  return (
+    <div className="space-y-8">
+      {!selectedCategory && !searchQuery && (
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
+          <div className="max-w-3xl">
+            <h1 className="text-4xl font-bold mb-4">Portal Informasi & Tips Terkini</h1>
+            <p className="text-xl text-blue-100">Dapatkan informasi terbaru tentang bisnis, teknologi, dan lifestyle</p>
           </div>
-          <div className="p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
-              {article.title}
-            </h3>
-            <p className="text-gray-600 text-sm mb-4">{article.excerpt}</p>
-            <div className="flex items-center justify-between text-sm text-gray-500">
-              <div className="flex items-center space-x-4">
-                <span className="flex items-center">
-                  <Clock size={14} className="mr-1" />
-                  {article.readTime}
-                </span>
-                <span className="flex items-center">
-                  <Eye size={14} className="mr-1" />
-                  {article.views || 0}
-                </span>
+        </div>
+      )}
+
+      <div className="flex justify-center">
+        {leaderboardAd && leaderboardAd.key ? (
+          <AdsterraBanner adKey={leaderboardAd.key} width={leaderboardAd.width} height={leaderboardAd.height} />
+        ) : (
+          <AdSlot format="Leaderboard Banner (728x90)" width="728px" height="90px" />
+        )}
+      </div>
+
+      {selectedCategory && (
+        <div className="mb-8 flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-800">
+                Showing articles in: <span className="text-blue-600">{selectedCategory}</span>
+            </h2>
+            <button onClick={() => setSelectedCategory(null)} className="text-sm font-semibold text-gray-600 hover:text-gray-800">
+                Show All Articles
+            </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {articlesToDisplay.map((article) => (
+          <div 
+            key={article.id}
+            onClick={() => {
+              setSelectedArticle(article);
+              incrementViews(article.id);
+            }}
+            className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer overflow-hidden group"
+          >
+            <div className="relative h-48 overflow-hidden">
+              <img 
+                src={article.image} 
+                alt={article.title}
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+              />
+              <div 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  setSelectedCategory(article.category); 
+                  setSelectedArticle(null); 
+                }}
+                className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold hover:bg-blue-700 cursor-pointer transition-colors"
+              >
+                {article.category}
+              </div>
+            </div>
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
+                {article.title}
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">{article.excerpt}</p>
+              <div className="flex items-center justify-between text-sm text-gray-500">
+                <div className="flex items-center space-x-4">
+                  <span className="flex items-center">
+                    <Clock size={14} className="mr-1" />
+                    {article.readTime}
+                  </span>
+                  <span className="flex items-center">
+                    <Eye size={14} className="mr-1" />
+                    {article.views || 0}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
-
-    <div className="flex justify-center mt-8">
-      <AdSlot format="Banner Ad (728x90)" width="728px" height="90px" />
-    </div>
-  </div>
-);
-
-const ArticleDetail = ({ article, setSelectedArticle, articles, incrementViews }: { article: Article, setSelectedArticle: (article: Article | null) => void, articles: Article[], incrementViews: (id: number) => void }) => (
-  <div className="space-y-6">
-    <button 
-      onClick={() => setSelectedArticle(null)}
-      className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
-    >
-      ← Kembali ke Beranda
-    </button>
-
-    <div className="bg-white rounded-xl shadow-md overflow-hidden">
-      <img 
-        src={article.image} 
-        alt={article.title}
-        className="w-full h-96 object-cover"
-      />
-      <div className="p-8">
-        <div className="flex items-center space-x-4 mb-4">
-          <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
-            {article.category}
-          </span>
-          <span className="text-gray-500 text-sm flex items-center">
-            <Clock size={14} className="mr-1" />
-            {article.readTime}
-          </span>
-          <span className="text-gray-500 text-sm flex items-center">
-            <Eye size={14} className="mr-1" />
-            {article.views || 0} views
-          </span>
-        </div>
-        
-        <h1 className="text-4xl font-bold text-gray-800 mb-6">{article.title}</h1>
-        
-        <div className="flex items-center space-x-6 pb-6 border-b">
-          <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
-            <Heart size={20} />
-            <span>Like</span>
-          </button>
-          <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
-            <Share2 size={20} />
-            <span>Share</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div className="flex justify-center">
-      <AdSlot format="Banner Ad (728x90)" width="728px" height="90px" />
-    </div>
-
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-8">
-        <div className="prose max-w-none">
-          <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-            {article.content}
-          </div>
-        </div>
-
-        <div className="my-8 flex justify-center">
-          <AdSlot format="Large Rectangle (336x280)" width="336px" height="280px" />
-        </div>
+        ))}
       </div>
 
-      <div className="space-y-6">
-        <AdSlot format="Half Page (300x600)" width="300px" height="600px" />
-        
-        {articles.filter(a => a.id !== article.id).length > 0 && (
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Artikel Terkait</h3>
-            <div className="space-y-4">
-              {articles.filter(a => a.id !== article.id).slice(0, 2).map(related => (
-                <div 
-                  key={related.id}
-                  onClick={() => {
-                    setSelectedArticle(related);
-                    incrementViews(related.id);
-                  }}
-                  className="cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors"
-                >
-                  <h4 className="font-semibold text-gray-800 mb-1 text-sm">{related.title}</h4>
-                  <p className="text-xs text-gray-500">{related.readTime} • {related.views || 0} views</p>
-                </div>
-              ))}
-            </div>
-          </div>
+      {articlesToDisplay.length === 0 && (
+        <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">No articles found matching your criteria.</p>
+        </div>
+      )}
+
+      <div className="flex justify-center mt-8">
+        {footerBannerAd && footerBannerAd.key ? (
+          <AdsterraBanner adKey={footerBannerAd.key} width={footerBannerAd.width} height={footerBannerAd.height} />
+        ) : (
+          <AdSlot format="Banner Ad (728x90)" width="728px" height="90px" />
         )}
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-const FrontendView = ({ loading, selectedArticle, setSelectedArticle, setIsAdmin, articles, incrementViews }: { loading: boolean, selectedArticle: Article | null, setSelectedArticle: (article: Article | null) => void, setIsAdmin: (val: boolean | null) => void, articles: Article[], incrementViews: (id: number) => void }) => {
+const ArticleDetail = (props: { 
+  article: Article, 
+  setSelectedArticle: (article: Article | null) => void, 
+  articles: Article[], 
+  incrementViews: (id: number) => void, 
+  setSelectedCategory: (category: string | null) => void,
+  adConfig: AdConfigState
+}) => {
+  const { article, setSelectedArticle, articles, incrementViews, setSelectedCategory, adConfig } = props;
+  const articleRectangleAd = adConfig.articleRectangle;
+  const articleSidebarAd = adConfig.articleSidebar;
+
+  return (
+    <div className="space-y-6">
+      <button 
+        onClick={() => setSelectedArticle(null)}
+        className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
+      >
+        ← Kembali ke Beranda
+      </button>
+
+      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+        <img 
+          src={article.image} 
+          alt={article.title}
+          className="w-full h-96 object-cover"
+        />
+        <div className="p-8">
+          <div className="flex items-center space-x-4 mb-4">
+            <span 
+              onClick={() => { setSelectedCategory(article.category); setSelectedArticle(null); }}
+              className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold hover:bg-blue-700 cursor-pointer transition-colors"
+            >
+              {article.category}
+            </span>
+            <span className="text-gray-500 text-sm flex items-center">
+              <Clock size={14} className="mr-1" />
+              {article.readTime}
+            </span>
+            <span className="text-gray-500 text-sm flex items-center">
+              <Eye size={14} className="mr-1" />
+              {article.views || 0} views
+            </span>
+          </div>
+          
+          <h1 className="text-4xl font-bold text-gray-800 mb-6">{article.title}</h1>
+          
+          <div className="flex items-center space-x-6 pb-6 border-b">
+            <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
+              <Heart size={20} />
+              <span>Like</span>
+            </button>
+            <button className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
+              <Share2 size={20} />
+              <span>Share</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-center">
+        <AdSlot format="Banner Ad (728x90)" width="728px" height="90px" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-8">
+          <div className="prose max-w-none">
+            <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+              {article.content}
+            </div>
+          </div>
+
+          <div className="my-8 flex justify-center">
+            {articleRectangleAd && articleRectangleAd.key ? (
+              <AdsterraBanner adKey={articleRectangleAd.key} width={articleRectangleAd.width} height={articleRectangleAd.height} />
+            ) : (
+              <AdSlot format="Large Rectangle (336x280)" width="336px" height="280px" />
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {articleSidebarAd && articleSidebarAd.key ? (
+            <AdsterraBanner adKey={articleSidebarAd.key} width={articleSidebarAd.width} height={articleSidebarAd.height} />
+          ) : (
+            <AdSlot format="Half Page (300x600)" width="300px" height="600px" />
+          )}
+          
+          {articles.filter(a => a.id !== article.id).length > 0 && (
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4">Artikel Terkait</h3>
+              <div className="space-y-4">
+                {articles.filter(a => a.id !== article.id).slice(0, 2).map(related => (
+                  <div 
+                    key={related.id}
+                    onClick={() => {
+                      setSelectedArticle(related);
+                      incrementViews(related.id);
+                    }}
+                    className="cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors"
+                  >
+                    <h4 className="font-semibold text-gray-800 mb-1 text-sm">{related.title}</h4>
+                    <p className="text-xs text-gray-500">{related.readTime} • {related.views || 0} views</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FrontendView = (props: {
+  loading: boolean;
+  selectedArticle: Article | null;
+  setSelectedArticle: (article: Article | null) => void;
+  setIsAdmin: (val: boolean | null) => void;
+  articles: Article[];
+  incrementViews: (id: number) => void;
+  selectedCategory: string | null;
+  setSelectedCategory: (category: string | null) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  adConfig: AdConfigState;
+}) => {
+  const { loading, selectedArticle, setSelectedArticle, setIsAdmin, articles, incrementViews, selectedCategory, setSelectedCategory, searchQuery, setSearchQuery, adConfig } = props;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="sticky top-0 z-50 bg-white shadow-sm">
@@ -213,9 +369,9 @@ const FrontendView = ({ loading, selectedArticle, setSelectedArticle, setIsAdmin
 
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-8">
             <div 
-              onClick={() => setSelectedArticle(null)}
+              onClick={() => { setSelectedArticle(null); setSelectedCategory(null); }}
               className="cursor-pointer"
             >
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -223,9 +379,25 @@ const FrontendView = ({ loading, selectedArticle, setSelectedArticle, setIsAdmin
               </h1>
               <p className="text-sm text-gray-500 mt-1">Your Daily Source of Information</p>
             </div>
+
+            <div className="flex-1 flex justify-center">
+              <div className="relative w-full max-w-lg">
+                <input 
+                  type="text" 
+                  placeholder="Search articles by title or content..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="border-2 border-gray-200 rounded-full px-5 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Search size={20}/>
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={() => setIsAdmin(null)}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-gray-500 hover:text-gray-700 flex-shrink-0"
             >
               Admin →
             </button>
@@ -239,9 +411,9 @@ const FrontendView = ({ loading, selectedArticle, setSelectedArticle, setIsAdmin
             <p className="text-gray-500">Loading...</p>
           </div>
         ) : selectedArticle ? (
-          <ArticleDetail article={selectedArticle} setSelectedArticle={setSelectedArticle} articles={articles} incrementViews={incrementViews} />
+          <ArticleDetail article={selectedArticle} setSelectedArticle={setSelectedArticle} articles={articles} incrementViews={incrementViews} setSelectedCategory={setSelectedCategory} adConfig={adConfig} />
         ) : (
-          <HomePage articles={articles} setSelectedArticle={setSelectedArticle} incrementViews={incrementViews} />
+          <HomePage articles={articles} setSelectedArticle={setSelectedArticle} incrementViews={incrementViews} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} searchQuery={searchQuery} adConfig={adConfig} />
         )}
       </main>
 
@@ -314,7 +486,9 @@ const AdminDashboard = (props: {
   setFormData: (data: FormData) => void,
   handleEditArticle: (article: Article) => void,
   handleDeleteArticle: (id: number) => void,
-  handleSubmitArticle: () => void
+  handleSubmitArticle: () => void,
+  adConfig: AdConfigState,
+  saveAdConfig: (config: AdConfigState) => void
 }) => {
   const {
     handleLogout,
@@ -329,8 +503,32 @@ const AdminDashboard = (props: {
     setFormData,
     handleEditArticle,
     handleDeleteArticle,
-    handleSubmitArticle
+    handleSubmitArticle,
+    adConfig,
+    saveAdConfig
   } = props;
+
+  const [localAdConfig, setLocalAdConfig] = useState(adConfig);
+
+  useEffect(() => {
+    setLocalAdConfig(adConfig);
+  }, [adConfig]);
+
+  const handleAdConfigChange = (slot: string, field: keyof AdConfig, value: string | number) => {
+    setLocalAdConfig(prev => ({
+        ...prev,
+        [slot]: {
+            ...prev[slot],
+            [field]: value
+        }
+    }));
+  };
+
+  const handleSaveAdConfig = () => {
+    saveAdConfig(localAdConfig);
+    alert('Pengaturan iklan telah disimpan!');
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -495,7 +693,14 @@ const AdminDashboard = (props: {
                       onClick={() => {
                         setShowArticleForm(false);
                         setEditingArticle(null);
-                        setFormData({ title: '', category: '', image: '', excerpt: '', content: '', readTime: '5 min' });
+                        setFormData({
+                          title: '',
+                          category: '',
+                          image: '',
+                          excerpt: '',
+                          content: '',
+                          readTime: '5 min'
+                        });
                       }}
                       className="px-6 py-2 bg-gray-300 text-black rounded-lg hover:bg-gray-400 transition-colors"
                     >
@@ -550,7 +755,7 @@ const AdminDashboard = (props: {
         {activeTab === 'settings' && (
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Pengaturan</h2>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="p-4 bg-blue-50 rounded-lg">
                 <h3 className="font-semibold text-gray-800 mb-2">Informasi Sistem</h3>
                 <p className="text-sm text-gray-600">Storage: Menggunakan persistent storage (localStorage)</p>
@@ -560,6 +765,31 @@ const AdminDashboard = (props: {
                 <h3 className="font-semibold text-gray-800 mb-2">Password Admin</h3>
                 <p className="text-sm text-gray-600">Password default: admin123</p>
                 <p className="text-sm text-gray-600">Untuk keamanan, ubah password di production</p>
+              </div>
+
+              <div className="p-4 bg-green-50 rounded-lg">
+                <h3 className="font-semibold text-gray-800 mb-4">Pengaturan Iklan</h3>
+                <div className="space-y-4">
+                    {Object.keys(localAdConfig).map(slotName => (
+                        <div key={slotName}>
+                            <label className="block text-sm font-medium text-gray-700 capitalize">
+                                {slotName.replace(/([A-Z])/g, ' $1')} Ad Key
+                            </label>
+                            <input
+                                type="text"
+                                value={localAdConfig[slotName]?.key || ''}
+                                onChange={(e) => handleAdConfigChange(slotName, 'key', e.target.value)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            />
+                        </div>
+                    ))}
+                    <button
+                      onClick={handleSaveAdConfig}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Simpan Pengaturan Iklan
+                    </button>
+                </div>
               </div>
             </div>
           </div>
@@ -581,8 +811,18 @@ const AdsterraApp = () => {
   const [activeTab, setActiveTab] = useState('articles');
   const [showArticleForm, setShowArticleForm] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-  // This state is not used in the refactored components, but keeping it to not break things if it was used somewhere else.
   const [stats, setStats] = useState({ views: 0, clicks: 0, earnings: 0 });
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const defaultAdConfig: AdConfigState = {
+    leaderboard: { key: 'b097cb03c5e6bba0398e0613f4306f55', width: 728, height: 90 },
+    footerBanner: { key: '', width: 728, height: 90 },
+    articleRectangle: { key: '', width: 336, height: 280 },
+    articleSidebar: { key: '', width: 300, height: 600 },
+  };
+
+  const [adConfig, setAdConfig] = useState<AdConfigState>(defaultAdConfig);
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -596,7 +836,30 @@ const AdsterraApp = () => {
   useEffect(() => {
     loadArticles();
     loadStats();
+    loadAdConfig();
   }, []);
+
+  const loadAdConfig = () => {
+    try {
+        const storedConfig = localStorage.getItem('adConfig');
+        if (storedConfig) {
+            // Merge stored config with defaults to ensure all keys exist
+            setAdConfig(prev => ({...defaultAdConfig, ...JSON.parse(storedConfig)}));
+        }
+    } catch (error) {
+        console.error('Error loading ad config:', error);
+    }
+  };
+
+  const saveAdConfig = (newConfig: AdConfigState) => {
+    try {
+        localStorage.setItem('adConfig', JSON.stringify(newConfig));
+        setAdConfig(newConfig);
+    } catch (error) {
+        console.error('Error saving ad config:', error);
+        alert('Gagal menyimpan pengaturan iklan');
+    }
+  };
 
   const loadArticles = () => {
     try {
@@ -734,6 +997,8 @@ const AdsterraApp = () => {
       handleEditArticle={handleEditArticle}
       handleDeleteArticle={handleDeleteArticle}
       handleSubmitArticle={handleSubmitArticle}
+      adConfig={adConfig}
+      saveAdConfig={saveAdConfig}
     />; 
   }
   
@@ -753,6 +1018,11 @@ const AdsterraApp = () => {
     setIsAdmin={setIsAdmin}
     articles={articles}
     incrementViews={incrementViews}
+    selectedCategory={selectedCategory}
+    setSelectedCategory={setSelectedCategory}
+    searchQuery={searchQuery}
+    setSearchQuery={setSearchQuery}
+    adConfig={adConfig}
   />;
 };
 
