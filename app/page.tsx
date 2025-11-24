@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import Script from 'next/script';
-import { useSearchParams } from 'next/navigation';
 import { Share2, TrendingUp, Zap, Clock, Heart, MessageCircle, Bookmark, Home, Settings, FileText, BarChart3, Plus, Edit2, Trash2, Eye, Lock, LogOut, Search } from 'lucide-react';
 
 // --- TYPE DEFINITIONS ---
@@ -362,6 +361,7 @@ const FrontendView = (props: {
   loading: boolean;
   selectedArticle: Article | null;
   setSelectedArticle: (article: Article | null) => void;
+  setIsAdmin: (val: boolean | null) => void;
   articles: Article[];
   incrementViews: (id: number) => void;
   selectedCategory: string | null;
@@ -370,7 +370,7 @@ const FrontendView = (props: {
   setSearchQuery: (query: string) => void;
   adConfig: AdConfigState;
 }) => {
-  const { loading, selectedArticle, setSelectedArticle, articles, incrementViews, selectedCategory, setSelectedCategory, searchQuery, setSearchQuery, adConfig } = props;
+  const { loading, selectedArticle, setSelectedArticle, setIsAdmin, articles, incrementViews, selectedCategory, setSelectedCategory, searchQuery, setSearchQuery, adConfig } = props;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -417,7 +417,13 @@ const FrontendView = (props: {
                 </div>
               </div>
             </div>
-            
+
+            <button
+              onClick={() => setIsAdmin(null)}
+              className="text-sm text-gray-500 hover:text-gray-700 flex-shrink-0"
+            >
+              Admin →
+            </button>
           </div>
         </div>
       </header>
@@ -752,7 +758,14 @@ const AdminDashboard = (props: {
                       onClick={() => {
                         setShowArticleForm(false);
                         setEditingArticle(null);
-                        setFormData({ title: '', category: '', image: '', excerpt: '', content: '', readTime: '5 min' });
+                        setFormData({
+                          title: '',
+                          category: '',
+                          image: '',
+                          excerpt: '',
+                          content: '',
+                          readTime: '5 min'
+                        });
                       }}
                       className="px-6 py-2 bg-gray-300 text-black rounded-lg hover:bg-gray-400 transition-colors"
                     >
@@ -916,7 +929,7 @@ const AdminDashboard = (props: {
 
 // --- MAIN APP COMPONENT ---
 
-function App() {
+const AdsterraApp = () => {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(false);
   const [password, setPassword] = useState('');
   const [articles, setArticles] = useState<Article[]>([]);
@@ -1169,6 +1182,7 @@ function App() {
     loading={loading}
     selectedArticle={selectedArticle}
     setSelectedArticle={setSelectedArticle}
+    setIsAdmin={setIsAdmin}
     articles={articles}
     incrementViews={incrementViews}
     selectedCategory={selectedCategory}
@@ -1178,15 +1192,5 @@ function App() {
     adConfig={adConfig}
   />;
 };
-
-const AdsterraApp = () => {
-    // This is a wrapper component because useSearchParams can only be used in a client component
-    // that is a child of a <Suspense> boundary. In Next.js App Router, the page itself is the boundary.
-    return (
-        <React.Suspense fallback={<div>Loading...</div>}>
-            <App />
-        </React.Suspense>
-    );
-}
 
 export default AdsterraApp;
